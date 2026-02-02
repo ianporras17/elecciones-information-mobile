@@ -10,11 +10,11 @@ const api = axios.create({
 /* LOGIN */
 
 export const loginUser = async (payload: {
-  email: string;
+  identifier: string;
   password: string;
 }) => {
   const res = await api.post("/auth/login", payload);
-  return res.data; // 🔑 devolvemos SOLO data
+  return res.data;
 };
 
 /* REGISTER */

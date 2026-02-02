@@ -79,7 +79,7 @@ export const AuthForm = ({ mode }: { mode: "login" | "signup" }) => {
         });
       } else {
         const res = await loginUser({
-          email, // 🔒 solo correo
+          identifier: email, // solo correo
           password,
         });
 
