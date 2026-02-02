@@ -1,5 +1,6 @@
 import { View, Text, TextInput, Pressable } from "react-native";
 import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loginUser, registerUser } from "../../services/api";
 import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +11,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * Formulario de autenticación
  * - Valida campos
  * - Maneja loading
+ * - Guarda token JWT en AsyncStorage
  * - Guarda usuario en contexto global
  */
 export const AuthForm = ({ mode }: { mode: "login" | "signup" }) => {
@@ -18,16 +20,17 @@ export const AuthForm = ({ mode }: { mode: "login" | "signup" }) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Reset completo al cambiar login/signup
   useEffect(() => {
     setUsername("");
     setEmail("");
     setPassword("");
     setError("");
+    setShowPassword(false);
   }, [mode]);
 
   const validate = () => {
@@ -66,36 +69,54 @@ export const AuthForm = ({ mode }: { mode: "login" | "signup" }) => {
       setError("");
 
       if (mode === "signup") {
+        // 1) Registrar usuario
         await registerUser({
-          name: username,
-          email,
+          name: username.trim(),
+          email: email.trim(),
           password,
         });
 
-        // Guardar usuario recién creado
+        // 2) Auto-login para obtener token
+        const res = await loginUser({
+          identifier: email.trim(),
+          password,
+        });
+
+        // 3) Guardar token + user
+        await AsyncStorage.setItem("access_token", res.access_token);
+        await AsyncStorage.setItem("user", JSON.stringify(res.user));
+
         setUser({
-          name: username,
-          email,
+          id: res.user.id,
+          name: res.user.name,
+          email: res.user.email,
         });
       } else {
+        // Login
         const res = await loginUser({
-          email, // 🔒 solo correo
+          identifier: email.trim(),
           password,
         });
 
+        await AsyncStorage.setItem("access_token", res.access_token);
+        await AsyncStorage.setItem("user", JSON.stringify(res.user));
+
         setUser({
+          id: res.user.id,
           name: res.user.name,
           email: res.user.email,
         });
       }
 
       router.replace("/home");
-    } catch {
-      setError(
-        mode === "login"
-          ? "Correo o contraseña incorrectos"
-          : "No se pudo crear la cuenta"
-      );
+    } catch (e: any) {
+      const status = e?.response?.status;
+
+      if (mode === "login") {
+        setError(status === 401 ? "Correo o contraseña incorrectos" : "No se pudo iniciar sesión");
+      } else {
+        setError(status === 409 ? "Ese correo/usuario ya existe" : "No se pudo crear la cuenta");
+      }
     } finally {
       setLoading(false);
     }
@@ -110,6 +131,7 @@ export const AuthForm = ({ mode }: { mode: "login" | "signup" }) => {
           <TextInput
             value={username}
             onChangeText={setUsername}
+            autoCapitalize="none"
             style={inputStyle}
           />
         </>
@@ -138,7 +160,7 @@ export const AuthForm = ({ mode }: { mode: "login" | "signup" }) => {
           onPress={() => setShowPassword(!showPassword)}
           style={{ position: "absolute", right: 12, top: 14 }}
         >
-          <Text style={{ color: "#38BDF8" }}>
+          <Text style={{ color: "#38BDF8", fontWeight: "700" }}>
             {showPassword ? "Ocultar" : "Ver"}
           </Text>
         </Pressable>

@@ -1,24 +1,40 @@
 import { Modal, View, Text, TextInput, Pressable } from "react-native";
 import { useState } from "react";
+import { joinRoom } from "@/services/rooms";
 
 export default function JoinRoomModal({
   visible,
   onClose,
+  onJoined,
 }: {
   visible: boolean;
   onClose: () => void;
+  onJoined?: (room: { id: string; title: string }) => void;
 }) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  const join = () => {
-    setLoading(true);
+  const join = async () => {
+    const normalized = code.trim().toUpperCase();
+    if (!normalized) return;
 
-    setTimeout(() => {
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const room = await joinRoom(normalized);
+      setResult(`✅ Sala encontrada: ${room.title}`);
+      onJoined?.({ id: room.id, title: room.title });
+    } catch (e: any) {
+      // 401: no token / 403: sala inactiva / 404: código inválido
+      const status = e?.response?.status;
+      if (status === 401) setResult("❌ Sesión expirada. Inicia sesión de nuevo.");
+      else if (status === 403) setResult("⚠️ La sala está inactiva.");
+      else setResult("❌ Sala no encontrada. Código inválido.");
+    } finally {
       setLoading(false);
-      setResult(code === "VALIDO" ? "Sala encontrada" : "Sala no encontrada");
-    }, 2000);
+    }
   };
 
   return (
@@ -43,9 +59,14 @@ export default function JoinRoomModal({
               <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
                 Código de sala
               </Text>
+
               <TextInput
                 value={code}
-                onChangeText={setCode}
+                onChangeText={(t) => setCode(t.toUpperCase())}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                placeholder="Ej: A1B2C3"
+                placeholderTextColor="#64748B"
                 style={{
                   backgroundColor: "#020617",
                   borderRadius: 10,
@@ -57,15 +78,21 @@ export default function JoinRoomModal({
 
               <Pressable
                 onPress={join}
-                disabled={!code || loading}
+                disabled={!code.trim() || loading}
                 style={{
-                  backgroundColor: "#38BDF8",
+                  backgroundColor: !code.trim() || loading ? "#334155" : "#38BDF8",
                   padding: 14,
                   borderRadius: 12,
                 }}
               >
-                <Text style={{ textAlign: "center", fontWeight: "700" }}>
+                <Text style={{ textAlign: "center", fontWeight: "700", color: "#020617" }}>
                   {loading ? "Buscando..." : "Unirme"}
+                </Text>
+              </Pressable>
+
+              <Pressable onPress={onClose} style={{ marginTop: 12 }}>
+                <Text style={{ color: "#94A3B8", textAlign: "center" }}>
+                  Cancelar
                 </Text>
               </Pressable>
             </>
@@ -74,8 +101,20 @@ export default function JoinRoomModal({
               <Text style={{ color: "#E5E7EB", marginBottom: 16 }}>
                 {result}
               </Text>
-              <Pressable onPress={onClose}>
-                <Text style={{ color: "#38BDF8", textAlign: "center" }}>
+
+              <Pressable
+                onPress={() => {
+                  setCode("");
+                  setResult(null);
+                  onClose();
+                }}
+                style={{
+                  backgroundColor: "#38BDF8",
+                  padding: 14,
+                  borderRadius: 12,
+                }}
+              >
+                <Text style={{ textAlign: "center", fontWeight: "700", color: "#020617" }}>
                   Entendido
                 </Text>
               </Pressable>
