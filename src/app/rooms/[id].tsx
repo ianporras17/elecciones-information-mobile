@@ -61,20 +61,6 @@ export default function RoomScreen() {
               </Text>
             </View>
 
-            {/* Botón Torneo (placeholder) */}
-            <Pressable
-              onPress={() => {}}
-              style={{
-                backgroundColor: "#38BDF8",
-                padding: 14,
-                borderRadius: 14,
-              }}
-            >
-              <Text style={{ textAlign: "center", fontWeight: "900", color: "#020617" }}>
-                Torneo (próximamente)
-              </Text>
-            </Pressable>
-
             {/* Topics */}
             <Text style={{ color: "#E5E7EB", fontSize: 16, fontWeight: "800" }}>
               Topics
@@ -102,6 +88,23 @@ export default function RoomScreen() {
                   {t.content ? (
                     <Text style={{ color: "#94A3B8" }}>{t.content}</Text>
                   ) : null}
+
+                  {/* Botón Torneo */}
+                  <Pressable
+                    onPress={() => router.push(`/tournament?roomId=${room.id}&topicId=${t.id}`)}
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed ? "#0EA5E9" : "#38BDF8",
+                      padding: 12,
+                      borderRadius: 12,
+                      marginTop: 10,
+                      opacity: room.isActive ? 1 : 0.6,
+                    })}
+                    disabled={!room.isActive}
+                  >
+                    <Text style={{ textAlign: "center", fontWeight: "900", color: "#020617" }}>
+                      Torneo de este tema
+                    </Text>
+                  </Pressable>
 
                   {/* Resources */}
                   {t.resources?.length ? (

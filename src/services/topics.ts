@@ -22,3 +22,8 @@ export const listTopicsByRoom = async (roomId: string) => {
   const res = await api.get<MobileTopic[]>(`/rooms/${roomId}/topics`);
   return res.data;
 };
+
+export const getTopicById = async (topicId: string) => {
+  const res = await api.get(`/topics/${topicId}`);
+  return res.data;
+};
